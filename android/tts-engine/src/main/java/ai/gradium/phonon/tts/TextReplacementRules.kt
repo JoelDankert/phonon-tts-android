@@ -41,7 +41,13 @@ internal object TextReplacementRules {
 
     fun apply(context: Context, text: String): String = load(context).fold(text) { current, rule ->
         // A manually corrupted preference or an unexpected replacement failure cannot stop TTS.
-        runCatching { Regex(rule.pattern).replace(current, rule.replacement) }.getOrDefault(current)
+        runCatching {
+            val alternatives = rule.replacement.split('|')
+            val matcher = Pattern.compile(rule.pattern).matcher(current)
+            val result = StringBuffer()
+            while (matcher.find()) matcher.appendReplacement(result, alternatives.random())
+            matcher.appendTail(result).toString()
+        }.getOrDefault(current)
     }
 
     private fun save(context: Context, rules: List<TextReplacementRule>) {
@@ -55,7 +61,9 @@ internal object TextReplacementRules {
         catch (error: PatternSyntaxException) { return error.description.ifBlank { "Invalid regex" } }
         // The empty alternative guarantees a match, making Matcher validate every group reference.
         return try {
-            Pattern.compile("(?:$source)|(?:)").matcher("").replaceFirst(replacement)
+            replacement.split('|').forEach { alternative ->
+                Pattern.compile("(?:$source)|(?:)").matcher("").replaceFirst(alternative)
+            }
             null
         } catch (error: RuntimeException) {
             error.message?.substringBefore('\n')?.take(120) ?: "Invalid replacement"
