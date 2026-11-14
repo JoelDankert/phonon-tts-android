@@ -35,6 +35,8 @@ internal data class SettingsUiState(
     val voices: List<Pair<String, String>> = emptyList(), val selectedVoice: Int = 0,
     val sample: String = "", val rate: Int = 100, val speaking: Boolean = false,
     val previewError: String = "", val token: String = "", val tokenStatus: String = "",
+    val replacementRules: List<TextReplacementRule> = emptyList(), val replacementPattern: String = "",
+    val replacement: String = "", val replacementError: String = "",
     val confirmReplacement: Boolean = false, val licenseText: String? = null
 )
 internal data class SettingsActions(
@@ -43,6 +45,8 @@ internal data class SettingsActions(
     val selectInstalled: (String) -> Unit,
     val selectModel: (Int) -> Unit, val selectVoice: (Int) -> Unit,
     val editSample: (String) -> Unit, val changeRate: (Int) -> Unit,
+    val editReplacementPattern: (String) -> Unit, val editReplacement: (String) -> Unit,
+    val addReplacement: () -> Unit, val removeReplacement: (Int) -> Unit,
     val editToken: (String) -> Unit, val saveToken: () -> Unit, val deleteToken: () -> Unit,
     val download: () -> Unit, val importModel: () -> Unit, val cancelInstall: () -> Unit,
     val preview: () -> Unit, val stopPreview: () -> Unit, val terms: () -> Unit,
@@ -150,6 +154,28 @@ internal fun SettingsScreen(state: SettingsUiState, actions: SettingsActions) {
                                 if (state.previewError.isNotBlank()) Text(state.previewError, color = MaterialTheme.colorScheme.error, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
                             }
                         }
+                    }
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        SectionLabel(stringResource(R.string.text_replacements))
+                        Text(stringResource(R.string.text_replacements_help), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        state.replacementRules.forEachIndexed { index, rule ->
+                            OutlinedCard(Modifier.fillMaxWidth()) {
+                                Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                        Text(rule.pattern, style = MaterialTheme.typography.bodyMedium)
+                                        Text(rule.replacement, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                    TextButton(onClick = { actions.removeReplacement(index) }) { Text(stringResource(R.string.remove_rule)) }
+                                }
+                            }
+                        }
+                        OutlinedTextField(value = state.replacementPattern, onValueChange = actions.editReplacementPattern,
+                            label = { Text(stringResource(R.string.regex_pattern)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                        OutlinedTextField(value = state.replacement, onValueChange = actions.editReplacement,
+                            label = { Text(stringResource(R.string.regex_replacement)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                        Button(onClick = actions.addReplacement, enabled = state.replacementPattern.isNotEmpty()) { Text(stringResource(R.string.add_rule)) }
+                        if (state.replacementError.isNotBlank()) Text(state.replacementError, color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
                     }
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         SectionLabel(stringResource(R.string.model_storage))

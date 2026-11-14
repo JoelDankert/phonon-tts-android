@@ -23,13 +23,13 @@ android {
     compileSdk = 37
     ndkVersion = "27.2.12479018"
     defaultConfig {
-        applicationId = "io.github.zwiebelrostbraten.phonontts"
+        applicationId = "io.github.joeldankert.phonontts"
         minSdk = 24
         targetSdk = 36
         ndk { abiFilters += listOf("arm64-v8a", "x86_64") }
         resourceConfigurations += listOf("en", "de", "fr", "es", "pt")
-        versionCode = 14
-        versionName = "1.1.0"
+        versionCode = 15
+        versionName = "1.1.0-joel.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     // What android/build.sh writes.

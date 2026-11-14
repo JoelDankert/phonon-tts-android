@@ -23,7 +23,8 @@ class DataActivity : Activity() {
                 setResult(pass, result)
             }
             TextToSpeech.Engine.ACTION_GET_SAMPLE_TEXT -> {
-                val sample = Samples.text[Model.code(intent.getStringExtra("language"))]
+                val language = Model.code(intent.getStringExtra("language"))
+                val sample = language?.takeIf { it in Model.languages(this) }?.let { Samples.text[it] }
                 if (sample == null) {
                     setResult(TextToSpeech.LANG_NOT_SUPPORTED)
                 } else {

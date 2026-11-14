@@ -23,14 +23,16 @@ class PhononService : TextToSpeechService() {
 
     override fun onCreate() {
         super.onCreate()
-        language = Model.systemLanguage(this)
+        val selected = Model.selected(this)
+        language = Model.systemLanguage(this)?.takeIf { it in selected?.languages.orEmpty() }
+            ?: selected?.languages?.firstOrNull()
     }
 
     // Answered from the installed files, without waiting for the model to load.
     override fun onIsLanguageAvailable(lang: String?, country: String?, variant: String?): Int {
         val code = Model.code(lang) ?: return TextToSpeech.LANG_NOT_SUPPORTED
         // The checkpoints have no regional variants, so a country never matches more closely.
-        return if (code in Model.languages(this)) TextToSpeech.LANG_AVAILABLE else TextToSpeech.LANG_MISSING_DATA
+        return if (code in Model.selected(this)?.languages.orEmpty()) TextToSpeech.LANG_AVAILABLE else TextToSpeech.LANG_MISSING_DATA
     }
 
     override fun onLoadLanguage(lang: String?, country: String?, variant: String?): Int {
@@ -40,25 +42,28 @@ class PhononService : TextToSpeechService() {
     }
 
     override fun onGetLanguage(): Array<String> {
-        val code = language ?: Model.languages(this).firstOrNull() ?: return arrayOf("", "", "")
+        val available = Model.selected(this)?.languages.orEmpty()
+        val code = language?.takeIf { it in available } ?: available.firstOrNull() ?: return arrayOf("", "", "")
         return arrayOf(Locale.forLanguageTag(code).isO3Language, "", "")
     }
 
     override fun onGetVoices(): List<Voice> {
-        return Model.entries(this).flatMap { entry -> entry.languages.flatMap { lang ->
+        val entry = Model.selected(this) ?: return emptyList()
+        return entry.languages.flatMap { lang ->
             BundledVoices.metadata(this, entry, lang).map { speaker -> voice(entry.id,lang,speaker) }
-        } }
+        }
     }
     override fun onIsValidVoiceName(voiceName: String?): Int = if(parse(voiceName) != null) TextToSpeech.SUCCESS else TextToSpeech.ERROR
     override fun onLoadVoice(voiceName: String?): Int {
         val choice = parse(voiceName) ?: return TextToSpeech.ERROR
-        language = choice.lang
+        BundledVoices.select(this, choice.entry.id, choice.voiceLanguage, choice.speaker)
         return TextToSpeech.SUCCESS
     }
     override fun onGetDefaultVoiceNameFor(lang: String?, country: String?, variant: String?): String? {
         val code = Model.code(lang) ?: return null
-        val entry = Model.route(this,code) ?: return null
-        return Routing.voice(entry.id,code,BundledVoices.selectedMetadata(this,entry,code))
+        val entry = Model.selected(this)?.takeIf { code in it.languages } ?: return null
+        val selected = BundledVoices.selected(this, entry) ?: return null
+        return Routing.voice(entry.id,selected.language,selected.speaker)
     }
 
     override fun onStop() {
@@ -67,12 +72,14 @@ class PhononService : TextToSpeechService() {
 
     override fun onSynthesizeText(request: SynthesisRequest, callback: SynthesisCallback) {
         stopped = false
-        val choice = parse(request.voiceName) ?: Model.code(request.language)?.let { lang ->
-            Model.route(this,lang)?.let { entry -> Choice(entry,lang,BundledVoices.selectedMetadata(this,entry,lang)) }
+        val entry = Model.selected(this) ?: run { fail(callback,TextToSpeech.ERROR_INVALID_REQUEST); return }
+        val lang = Model.code(request.language)?.takeIf { it in entry.languages }
+            ?: run { fail(callback,TextToSpeech.ERROR_INVALID_REQUEST); return }
+        val choice = BundledVoices.selected(this, entry)?.let {
+            Choice(entry, it.language, it.speaker)
         } ?: run { fail(callback,TextToSpeech.ERROR_INVALID_REQUEST); return }
-        val lang = choice.lang
         val speaker = choice.speaker
-        val text = request.charSequenceText?.toString().orEmpty()
+        val text = TextReplacementRules.apply(this, request.charSequenceText?.toString().orEmpty())
         if (callback.start(SAMPLE_RATE, AudioFormat.ENCODING_PCM_16BIT, 1) != TextToSpeech.SUCCESS) return
         if (text.isBlank()) {
             callback.done()
@@ -81,7 +88,8 @@ class PhononService : TextToSpeechService() {
         try {
             val result = Model.use(this,choice.entry) { model ->
                 model.tts.setLanguage(lang)
-                if (speaker in model.speakers) model.tts.setVoice(speaker)
+                check(speaker in model.speakers) { "Selected voice is unavailable" }
+                model.tts.setVoice(speaker)
                 SentenceSpeech(
                     request.speechRate, callback.maxBufferSize, { stopped },
                     { sentence, pcm -> model.tts.speak(sentence, pcm) },
@@ -111,16 +119,15 @@ class PhononService : TextToSpeechService() {
 
     private fun voice(id: String, lang: String, speaker: String) = Voice(
         Routing.voice(id,lang,speaker), Locale.forLanguageTag(lang), Voice.QUALITY_HIGH, Voice.LATENCY_LOW, false, emptySet())
-    private data class Choice(val entry: Model.Entry, val lang: String, val speaker: String)
+    private data class Choice(val entry: Model.Entry, val voiceLanguage: String, val speaker: String)
     private fun parse(name: String?): Choice? {
         if(name == null) return null
-        val entries = Model.entries(this)
-        val voices = entries.flatMap { entry -> entry.languages.flatMap { lang ->
+        val entry = Model.selected(this) ?: return null
+        val voices = entry.languages.flatMap { lang ->
             BundledVoices.metadata(this,entry,lang).map { VoiceIdentity(entry.id,lang,it,BundledVoices.androidName(lang,it)) }
-        } }
-        val preferred = Model.SUPPORTED.mapNotNull { lang -> Model.route(this,lang,entries)?.let { lang to it.id } }.toMap()
-        val found = Routing.resolve(name,voices,preferred) ?: return null
-        return Choice(entries.first { it.id == found.id },found.lang,found.speaker)
+        }
+        val found = Routing.resolve(name,voices,emptyMap()) ?: return null
+        return Choice(entry,found.lang,found.speaker)
     }
 
     private companion object {

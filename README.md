@@ -22,6 +22,8 @@ Phonon TTS Community brings [Gradium Phonon](https://github.com/gradium-ai/xn-pt
 
 **Distribution status:** The download link provides the signed **Phonon TTS Community 1.1.0** APK, with a new application ID (`io.github.zwiebelrostbraten.phonontts`), distinct artwork and a dedicated Community release key. It installs alongside the earlier Phonon TTS app; earlier app data is not migrated. Source builds remain unsigned by default. It is not yet listed on F-Droid; see [distribution and signing](docs/f-droid.md).
 
+**Joel fork:** The `io.github.joeldankert.phonontts` build installs separately with its own app storage. It adds ordered global regex text replacements and keeps the explicitly selected model and voice instead of switching them according to requested text language.
+
 ## Features
 
 - Speak English, German, French, Spanish and Portuguese with seven models you can install side by side.

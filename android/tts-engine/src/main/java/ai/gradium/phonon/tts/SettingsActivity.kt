@@ -37,7 +37,7 @@ class SettingsActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        ui = ui.copy(sample = getString(R.string.preview_text))
+        ui = ui.copy(sample = getString(R.string.preview_text), replacementRules = TextReplacementRules.load(this))
         updateTokenStatus()
         setContent {
             SettingsScreen(ui, SettingsActions(
@@ -58,9 +58,22 @@ class SettingsActivity : ComponentActivity() {
                     }
                 },
                 selectInstalled = { Model.select(this,it); refresh() },
-                selectVoice = { index -> ui.voices.getOrNull(index)?.let { BundledVoices.select(this, it.first, it.second) }; ui = ui.copy(selectedVoice = index, sample = Samples.text[ui.voices.getOrNull(index)?.first] ?: ui.sample) },
+                selectVoice = { index -> ui.voices.getOrNull(index)?.let { choice ->
+                    shownModel?.let { BundledVoices.select(this, it.id, choice.first, choice.second) }
+                }; ui = ui.copy(selectedVoice = index, sample = Samples.text[ui.voices.getOrNull(index)?.first] ?: ui.sample) },
                 editSample = { ui = ui.copy(sample = it) },
                 changeRate = { ui = ui.copy(rate = it) },
+                editReplacementPattern = { ui = ui.copy(replacementPattern = it, replacementError = "") },
+                editReplacement = { ui = ui.copy(replacement = it, replacementError = "") },
+                addReplacement = {
+                    val error = TextReplacementRules.add(this, ui.replacementPattern, ui.replacement)
+                    ui = if (error == null) ui.copy(replacementRules = TextReplacementRules.load(this), replacementPattern = "", replacement = "", replacementError = "")
+                    else ui.copy(replacementError = error)
+                },
+                removeReplacement = { index ->
+                    TextReplacementRules.remove(this, index)
+                    ui = ui.copy(replacementRules = TextReplacementRules.load(this), replacementError = "")
+                },
                 editToken = { ui = ui.copy(token = it) },
                 saveToken = { saveToken() }, deleteToken = {
                     try { tokenStore.delete(); ui = ui.copy(token = ""); updateTokenStatus() }
@@ -157,12 +170,10 @@ class SettingsActivity : ComponentActivity() {
             val voices = selectedEntry?.let { entry -> entry.languages.flatMap { lang ->
                 BundledVoices.metadata(this,entry,lang).map { lang to it }
             } }.orEmpty()
-            val lang = ui.voices.getOrNull(ui.selectedVoice)?.first?.takeIf { it in selectedEntry?.languages.orEmpty() }
-                ?: Model.systemLanguage(this)?.takeIf { it in selectedEntry?.languages.orEmpty() }
-                ?: selectedEntry?.languages?.firstOrNull()
-            val selected = selectedEntry?.let { entry -> voices.indexOfFirst { (code, speaker) ->
-                code == lang && speaker == BundledVoices.selectedMetadata(this,entry,code)
-            } }?.coerceAtLeast(0) ?: 0
+            val storedVoice = selectedEntry?.let { BundledVoices.selected(this, it) }
+            val selected = voices.indexOfFirst { (code, speaker) ->
+                code == storedVoice?.language && speaker == storedVoice?.speaker
+            }.coerceAtLeast(0)
             ui = ui.copy(voices = voices, selectedVoice = selected,
                 sample = Samples.text[voices.getOrNull(selected)?.first] ?: ui.sample)
         }
@@ -176,9 +187,7 @@ class SettingsActivity : ComponentActivity() {
             val label = entry.catalog?.let { getString(it.label) }
                 ?: if(entry.id == "legacy") getString(R.string.legacy_model) else getString(R.string.custom_model,entry.id)
             val size = entry.directory.walkTopDown().filter { it.isFile }.sumOf { it.length() }
-            val defaults = Model.preferredLanguages(this,entry.id)
-            val details = getString(R.string.installed_details,entry.languages.joinToString(", "),size / 1_000_000.0) +
-                if(defaults.isEmpty()) "" else "\n" + getString(R.string.language_defaults,defaults.joinToString(", "))
+            val details = getString(R.string.installed_details,entry.languages.joinToString(", "),size / 1_000_000.0)
             InstalledChoice(entry.id,label,details)
         }
         val packLanguage = ui.voices.getOrNull(ui.selectedVoice)?.first

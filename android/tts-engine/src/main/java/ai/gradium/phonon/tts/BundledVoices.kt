@@ -7,6 +7,7 @@ import org.json.JSONObject
 import java.io.File
 
 object BundledVoices {
+    data class Choice(val language: String, val speaker: String)
     @Volatile private var catalog: List<BundledVoice>? = null
     internal fun entries(context: Context): List<BundledVoice> = catalog ?: synchronized(this) {
         catalog ?: run {
@@ -45,19 +46,21 @@ object BundledVoices {
         return VoiceCatalogPolicy.available(names.toList(), catalog, lang) { VoicePacks.available(context, it) != null }
     }
 
-    fun selectedMetadata(context: Context, entry: Model.Entry, lang: String): String {
-        val available = metadata(context,entry,lang)
-        return context.getSharedPreferences("voices",Context.MODE_PRIVATE).getString(lang,null)?.takeIf { it in available } ?: available.firstOrNull { it == "default" } ?: available.firstOrNull() ?: "default"
+    fun selected(context: Context, entry: Model.Entry): Choice? {
+        val preferences = context.getSharedPreferences("voices", Context.MODE_PRIVATE)
+        val language = preferences.getString("${entry.id}-language", null)
+        val speaker = preferences.getString("${entry.id}-speaker", null)
+        if (language != null && speaker != null && language in entry.languages && speaker in metadata(context, entry, language)) {
+            return Choice(language, speaker)
+        }
+        return entry.languages.firstNotNullOfOrNull { lang ->
+            metadata(context, entry, lang).firstOrNull()?.let { Choice(lang, it) }
+        }
     }
     fun label(speaker: String): String = if (speaker.startsWith("Gradium_")) speaker.removePrefix("Gradium_").substringBefore('_') else speaker
     fun androidName(lang: String, speaker: String) = "$lang-${if (speaker.startsWith("Gradium_")) label(speaker) + " (Gradium)" else speaker}"
-    fun speakers(context: Context, model: Model.Loaded, lang: String) = VoiceCatalogPolicy.filter(model.speakers, entries(context), lang)
-    fun selected(context: Context, model: Model.Loaded, lang: String): String? {
-        val available = speakers(context, model, lang)
-        return context.getSharedPreferences("voices", Context.MODE_PRIVATE).getString(lang, null)?.takeIf { it in available }
-            ?: model.defaultSpeaker?.takeIf { it in available } ?: available.firstOrNull()
-    }
-    fun select(context: Context, lang: String, speaker: String) {
-        context.getSharedPreferences("voices", Context.MODE_PRIVATE).edit().putString(lang, speaker).apply()
+    fun select(context: Context, model: String, lang: String, speaker: String) {
+        context.getSharedPreferences("voices", Context.MODE_PRIVATE).edit()
+            .putString("$model-language", lang).putString("$model-speaker", speaker).apply()
     }
 }

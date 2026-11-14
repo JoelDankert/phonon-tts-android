@@ -45,7 +45,7 @@ object Model {
     private fun prefs(context: Context) = context.getSharedPreferences("models",Context.MODE_PRIVATE)
     fun selected(context: Context): Entry? {
         val entries = entries(context)
-        return entries.firstOrNull { it.id == prefs(context).getString("selected",null) } ?: route(context,systemLanguage(context),entries) ?: entries.firstOrNull()
+        return entries.firstOrNull { it.id == prefs(context).getString("selected",null) } ?: entries.firstOrNull()
     }
     fun select(context: Context, id: String) {
         val preferences = prefs(context)
@@ -57,15 +57,9 @@ object Model {
         if (next === current) return // Unknown installed identity: no writes and no native load.
         preferences.edit().apply {
             putString("selected", next.selected)
-            next.defaults.forEach { (language, model) -> putString("language-$language", model) }
+            preferences.all.keys.filter { it.startsWith("language-") }.forEach { remove(it) }
         }.apply()
         load(context)
-    }
-    fun preferredLanguages(context: Context, id: String) = SUPPORTED.filter { prefs(context).getString("language-$it",null) == id }
-    fun route(context: Context, lang: String?, entries: List<Entry> = entries(context)): Entry? {
-        if(lang == null) return null
-        val chosen = Routing.choose(entries.map { RouteModel(it.id,it.languages) },lang,prefs(context).getString("language-$lang",null))
-        return entries.firstOrNull { it.id == chosen?.id }
     }
     fun systemLanguage(context: Context): String? {
         val locales = context.resources.configuration.locales
@@ -73,7 +67,7 @@ object Model {
     }
     fun dir(context: Context) = selected(context)?.directory ?: File(context.filesDir,"model")
     fun installed(context: Context) = entries(context).isNotEmpty()
-    fun languages(context: Context) = Routing.languages(entries(context).map { RouteModel(it.id,it.languages) })
+    fun languages(context: Context) = selected(context)?.languages.orEmpty()
     private fun checkpointLanguages(checkpoint: File): List<String> {
         val listed = runCatching { JSONObject(File(checkpoint,"config.json").readText()).optJSONArray("languages") }.getOrNull()
         val names = (0 until (listed?.length() ?: 0)).mapNotNull { code(listed!!.optString(it)) }
@@ -134,7 +128,11 @@ object Model {
                         if(cancelled()) { close(); throw java.util.concurrent.CancellationException() }
                     }
                     snapshot = discover(context)
-                    prefs(context).edit().putString("selected",id).apply()
+                    val preferences = prefs(context)
+                    preferences.edit().apply {
+                        putString("selected", id)
+                        preferences.all.keys.filter { it.startsWith("language-") }.forEach { remove(it) }
+                    }.apply()
                 } catch(t: Throwable) {
                     CheckpointSwap.restoreActivation(t, { close() }, { CheckpointSwap.recover(target) }) {
                         snapshot = previousEntries
@@ -166,7 +164,7 @@ object Model {
                         (0 until locales.size()).map { locales[it].toLanguageTag() })
                     preferences.edit().apply {
                         if (next.selected == null) remove("selected") else putString("selected", next.selected)
-                        current.defaults.filterValues { it == id }.keys.forEach { remove("language-$it") }
+                        preferences.all.keys.filter { it.startsWith("language-") }.forEach { remove(it) }
                     }.apply()
                 }
             }
