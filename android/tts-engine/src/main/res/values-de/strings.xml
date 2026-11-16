@@ -79,4 +79,5 @@
     <string name="cancel_edit_rule">Abbrechen</string>
     <string name="move_rule_up">Regel nach oben verschieben</string>
     <string name="move_rule_down">Regel nach unten verschieben</string>
+    <string name="remove_rule">Entfernen</string>
 </resources>
