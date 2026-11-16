@@ -37,6 +37,7 @@ internal data class SettingsUiState(
     val previewError: String = "", val token: String = "", val tokenStatus: String = "",
     val replacementRules: List<TextReplacementRule> = emptyList(), val replacementPattern: String = "",
     val replacement: String = "", val replacementError: String = "",
+    val editingReplacement: Int? = null,
     val confirmReplacement: Boolean = false, val licenseText: String? = null
 )
 internal data class SettingsActions(
@@ -46,7 +47,9 @@ internal data class SettingsActions(
     val selectModel: (Int) -> Unit, val selectVoice: (Int) -> Unit,
     val editSample: (String) -> Unit, val changeRate: (Int) -> Unit,
     val editReplacementPattern: (String) -> Unit, val editReplacement: (String) -> Unit,
-    val addReplacement: () -> Unit, val removeReplacement: (Int) -> Unit,
+    val addReplacement: () -> Unit, val startEditReplacement: (Int) -> Unit,
+    val cancelEditReplacement: () -> Unit, val removeReplacement: (Int) -> Unit,
+    val moveReplacement: (Int, Int) -> Unit,
     val editToken: (String) -> Unit, val saveToken: () -> Unit, val deleteToken: () -> Unit,
     val download: () -> Unit, val importModel: () -> Unit, val cancelInstall: () -> Unit,
     val preview: () -> Unit, val stopPreview: () -> Unit, val terms: () -> Unit,
@@ -160,12 +163,21 @@ internal fun SettingsScreen(state: SettingsUiState, actions: SettingsActions) {
                         Text(stringResource(R.string.text_replacements_help), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         state.replacementRules.forEachIndexed { index, rule ->
                             OutlinedCard(Modifier.fillMaxWidth()) {
-                                Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                        Text(rule.pattern, style = MaterialTheme.typography.bodyMedium)
-                                        Text(rule.replacement, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                    Text(rule.pattern, style = MaterialTheme.typography.bodyMedium)
+                                    Text(rule.replacement, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                                        IconButton(onClick = { actions.moveReplacement(index, -1) }, enabled = index > 0,
+                                            modifier = Modifier.semantics { contentDescription = context.getString(R.string.move_rule_up) }) {
+                                            Text("↑", style = MaterialTheme.typography.titleMedium)
+                                        }
+                                        IconButton(onClick = { actions.moveReplacement(index, 1) }, enabled = index < state.replacementRules.lastIndex,
+                                            modifier = Modifier.semantics { contentDescription = context.getString(R.string.move_rule_down) }) {
+                                            Text("↓", style = MaterialTheme.typography.titleMedium)
+                                        }
+                                        TextButton(onClick = { actions.startEditReplacement(index) }) { Text(stringResource(R.string.edit_rule)) }
+                                        TextButton(onClick = { actions.removeReplacement(index) }) { Text(stringResource(R.string.remove_rule)) }
                                     }
-                                    TextButton(onClick = { actions.removeReplacement(index) }) { Text(stringResource(R.string.remove_rule)) }
                                 }
                             }
                         }
@@ -173,7 +185,14 @@ internal fun SettingsScreen(state: SettingsUiState, actions: SettingsActions) {
                             label = { Text(stringResource(R.string.regex_pattern)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
                         OutlinedTextField(value = state.replacement, onValueChange = actions.editReplacement,
                             label = { Text(stringResource(R.string.regex_replacement)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                        Button(onClick = actions.addReplacement, enabled = state.replacementPattern.isNotEmpty()) { Text(stringResource(R.string.add_rule)) }
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(onClick = actions.addReplacement, enabled = state.replacementPattern.isNotEmpty()) {
+                                Text(stringResource(if (state.editingReplacement == null) R.string.add_rule else R.string.save_rule))
+                            }
+                            if (state.editingReplacement != null) TextButton(onClick = actions.cancelEditReplacement) {
+                                Text(stringResource(R.string.cancel_edit_rule))
+                            }
+                        }
                         if (state.replacementError.isNotBlank()) Text(state.replacementError, color = MaterialTheme.colorScheme.error,
                             modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
                     }

@@ -74,4 +74,9 @@
     <string name="deleting_model">Modell wird gelöscht…</string>
     <string name="delete_model_complete">Modell gelöscht.</string>
     <string name="delete_model_failed">Löschen des Modells fehlgeschlagen. Die Bereinigung hat den Speicherplatz möglicherweise nicht vollständig freigegeben. Speicher prüfen und erneut versuchen.</string>
+    <string name="edit_rule">Bearbeiten</string>
+    <string name="save_rule">Speichern</string>
+    <string name="cancel_edit_rule">Abbrechen</string>
+    <string name="move_rule_up">Regel nach oben verschieben</string>
+    <string name="move_rule_down">Regel nach unten verschieben</string>
 </resources>

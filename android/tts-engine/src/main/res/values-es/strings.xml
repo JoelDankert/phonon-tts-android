@@ -74,4 +74,9 @@
     <string name="deleting_model">Eliminando modelo…</string>
     <string name="delete_model_complete">Modelo eliminado.</string>
     <string name="delete_model_failed">Error al eliminar el modelo. Es posible que la limpieza no haya liberado todo el espacio de almacenamiento. Revisa el almacenamiento e inténtalo de nuevo.</string>
+    <string name="edit_rule">Editar</string>
+    <string name="save_rule">Guardar</string>
+    <string name="cancel_edit_rule">Cancelar</string>
+    <string name="move_rule_up">Mover regla hacia arriba</string>
+    <string name="move_rule_down">Mover regla hacia abajo</string>
 </resources>

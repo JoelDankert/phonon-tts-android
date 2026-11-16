@@ -74,4 +74,9 @@
     <string name="deleting_model">Suppression du modèle…</string>
     <string name="delete_model_complete">Modèle supprimé.</string>
     <string name="delete_model_failed">Échec de la suppression du modèle. Le nettoyage peut ne pas avoir entièrement libéré l’espace de stockage. Vérifiez le stockage et réessayez.</string>
+    <string name="edit_rule">Modifier</string>
+    <string name="save_rule">Enregistrer</string>
+    <string name="cancel_edit_rule">Annuler</string>
+    <string name="move_rule_up">Déplacer la règle vers le haut</string>
+    <string name="move_rule_down">Déplacer la règle vers le bas</string>
 </resources>

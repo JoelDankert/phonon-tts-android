@@ -33,6 +33,23 @@ internal object TextReplacementRules {
         return null
     }
 
+    fun update(context: Context, index: Int, pattern: String, replacement: String): String? {
+        validate(pattern, replacement)?.let { return it }
+        val rules = load(context)
+        if (index !in rules.indices) return "Rule no longer exists"
+        save(context, rules.toMutableList().apply { this[index] = TextReplacementRule(pattern, replacement) })
+        return null
+    }
+
+    fun move(context: Context, index: Int, offset: Int) {
+        val rules = load(context).toMutableList()
+        val destination = index + offset
+        if (index !in rules.indices || destination !in rules.indices) return
+        val rule = rules.removeAt(index)
+        rules.add(destination, rule)
+        save(context, rules)
+    }
+
     fun remove(context: Context, index: Int) {
         val rules = load(context)
         if (index !in rules.indices) return

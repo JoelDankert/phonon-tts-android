@@ -80,4 +80,9 @@
     <string name="regex_replacement">Replacement</string>
     <string name="add_rule">Add rule</string>
     <string name="remove_rule">Remove</string>
+    <string name="edit_rule">Edit</string>
+    <string name="save_rule">Save</string>
+    <string name="cancel_edit_rule">Cancel</string>
+    <string name="move_rule_up">Move rule up</string>
+    <string name="move_rule_down">Move rule down</string>
 </resources>

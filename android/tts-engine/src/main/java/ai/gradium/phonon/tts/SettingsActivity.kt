@@ -66,13 +66,23 @@ class SettingsActivity : ComponentActivity() {
                 editReplacementPattern = { ui = ui.copy(replacementPattern = it, replacementError = "") },
                 editReplacement = { ui = ui.copy(replacement = it, replacementError = "") },
                 addReplacement = {
-                    val error = TextReplacementRules.add(this, ui.replacementPattern, ui.replacement)
-                    ui = if (error == null) ui.copy(replacementRules = TextReplacementRules.load(this), replacementPattern = "", replacement = "", replacementError = "")
+                    val editingIndex = ui.editingReplacement
+                    val error = if (editingIndex == null) TextReplacementRules.add(this, ui.replacementPattern, ui.replacement)
+                        else TextReplacementRules.update(this, editingIndex, ui.replacementPattern, ui.replacement)
+                    ui = if (error == null) ui.copy(replacementRules = TextReplacementRules.load(this), replacementPattern = "", replacement = "", replacementError = "", editingReplacement = null)
                     else ui.copy(replacementError = error)
                 },
+                startEditReplacement = { index -> ui.replacementRules.getOrNull(index)?.let { rule ->
+                    ui = ui.copy(replacementPattern = rule.pattern, replacement = rule.replacement, replacementError = "", editingReplacement = index)
+                } },
+                cancelEditReplacement = { ui = ui.copy(replacementPattern = "", replacement = "", replacementError = "", editingReplacement = null) },
                 removeReplacement = { index ->
                     TextReplacementRules.remove(this, index)
-                    ui = ui.copy(replacementRules = TextReplacementRules.load(this), replacementError = "")
+                    ui = ui.copy(replacementRules = TextReplacementRules.load(this), replacementPattern = "", replacement = "", replacementError = "", editingReplacement = null)
+                },
+                moveReplacement = { index, offset ->
+                    TextReplacementRules.move(this, index, offset)
+                    ui = ui.copy(replacementRules = TextReplacementRules.load(this), replacementPattern = "", replacement = "", replacementError = "", editingReplacement = null)
                 },
                 editToken = { ui = ui.copy(token = it) },
                 saveToken = { saveToken() }, deleteToken = {

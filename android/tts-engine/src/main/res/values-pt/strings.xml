@@ -74,4 +74,9 @@
     <string name="deleting_model">Excluindo modelo…</string>
     <string name="delete_model_complete">Modelo excluído.</string>
     <string name="delete_model_failed">Falha ao excluir o modelo. A limpeza pode não ter liberado todo o espaço de armazenamento. Verifique o armazenamento e tente novamente.</string>
+    <string name="edit_rule">Editar</string>
+    <string name="save_rule">Guardar</string>
+    <string name="cancel_edit_rule">Cancelar</string>
+    <string name="move_rule_up">Mover regra para cima</string>
+    <string name="move_rule_down">Mover regra para baixo</string>
 </resources>
